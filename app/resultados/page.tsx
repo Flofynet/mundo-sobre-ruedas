@@ -26,6 +26,7 @@ export default function ResultadosPage() {
 
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const [error, setError] = useState("");
 
   const loadStatistics = useCallback(async () => {
@@ -39,6 +40,11 @@ export default function ResultadosPage() {
       });
 
       const data = await response.json();
+
+      if (response.status === 401) {
+        window.location.href = "/resultados/login";
+        return;
+      }
 
       if (!response.ok) {
         throw new Error(
@@ -63,6 +69,33 @@ export default function ResultadosPage() {
   useEffect(() => {
     void loadStatistics();
   }, [loadStatistics]);
+
+  async function logout() {
+    try {
+      setLoggingOut(true);
+      setError("");
+
+      const response = await fetch("/api/resultados/logout", {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        throw new Error("No se pudo cerrar la sesión.");
+      }
+
+      window.location.href = "/resultados/login";
+    } catch (logoutError) {
+      console.error(logoutError);
+
+      setError(
+        logoutError instanceof Error
+          ? logoutError.message
+          : "No se pudo cerrar la sesión."
+      );
+
+      setLoggingOut(false);
+    }
+  }
 
   function downloadReport() {
     try {
@@ -183,8 +216,7 @@ export default function ResultadosPage() {
       const link = document.createElement("a");
 
       link.href = imageUrl;
-      link.download =
-        `resultados-mundo-sobre-ruedas-${getFileDate()}.png`;
+      link.download = `resultados-mundo-sobre-ruedas-${getFileDate()}.png`;
 
       document.body.appendChild(link);
       link.click();
@@ -204,19 +236,30 @@ export default function ResultadosPage() {
       <div className="pointer-events-none absolute -bottom-40 -left-32 h-96 w-96 rounded-full bg-[#8A46FF]/20 blur-3xl" />
 
       <section className="relative mx-auto max-w-6xl">
-        <div className="mb-9">
-          <p className="mb-3 bg-gradient-to-r from-[#27B7FF] to-[#8A46FF] bg-clip-text text-sm font-bold uppercase tracking-[0.35em] text-transparent">
-            Nexo
-          </p>
+        <div className="mb-9 flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="mb-3 bg-gradient-to-r from-[#27B7FF] to-[#8A46FF] bg-clip-text text-sm font-bold uppercase tracking-[0.35em] text-transparent">
+              Nexo
+            </p>
 
-          <h1 className="text-3xl font-bold sm:text-4xl">
-            Resultados
-          </h1>
+            <h1 className="text-3xl font-bold sm:text-4xl">
+              Resultados
+            </h1>
 
-          <p className="mt-3 text-[#B8B8D0]">
-            Estadísticas de los últimos 30 días de Mundo Sobre
-            Ruedas.
-          </p>
+            <p className="mt-3 text-[#B8B8D0]">
+              Estadísticas de los últimos 30 días de Mundo Sobre
+              Ruedas.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => void logout()}
+            disabled={loggingOut}
+            className="w-full rounded-2xl border border-white/15 bg-white/[0.04] px-5 py-3 font-semibold text-white transition hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+          >
+            {loggingOut ? "Cerrando sesión..." : "Cerrar sesión"}
+          </button>
         </div>
 
         {loading ? (
@@ -300,7 +343,8 @@ export default function ResultadosPage() {
               <button
                 type="button"
                 onClick={() => void loadStatistics()}
-                className="rounded-2xl border border-[#8A46FF]/40 bg-white/[0.04] px-6 py-4 font-semibold text-white transition hover:bg-white/[0.08]"
+                disabled={loading}
+                className="rounded-2xl border border-[#8A46FF]/40 bg-white/[0.04] px-6 py-4 font-semibold text-white transition hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Actualizar datos
               </button>
@@ -425,8 +469,15 @@ function drawStatisticCard(
     y + height
   );
 
-  cardGradient.addColorStop(0, "rgba(255, 255, 255, 0.06)");
-  cardGradient.addColorStop(1, "rgba(255, 255, 255, 0.025)");
+  cardGradient.addColorStop(
+    0,
+    "rgba(255, 255, 255, 0.06)"
+  );
+
+  cardGradient.addColorStop(
+    1,
+    "rgba(255, 255, 255, 0.025)"
+  );
 
   context.fillStyle = cardGradient;
 
