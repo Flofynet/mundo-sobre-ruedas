@@ -1,65 +1,229 @@
-import Image from "next/image";
+"use client";
+
+import { FormEvent, useState } from "react";
+
+type Message = {
+  role: "user" | "assistant";
+  content: string;
+};
+
+const welcomeMessage: Message = {
+  role: "assistant",
+  content:
+    "¡Hola! 👋 Bienvenido a Mundo Sobre Ruedas. Soy el asistente virtual y estoy aquí para ayudarte con horarios, precios, ubicación, menú, cumpleaños y demás informaciones. ¿Cuál es tu nombre?",
+};
 
 export default function Home() {
+  const [message, setMessage] = useState("");
+  const [messages, setMessages] = useState<Message[]>([welcomeMessage]);
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const cleanMessage = message.trim();
+
+    if (!cleanMessage || loading) {
+      return;
+    }
+
+    const updatedMessages: Message[] = [
+      ...messages,
+      {
+        role: "user",
+        content: cleanMessage,
+      },
+    ];
+
+    setMessages(updatedMessages);
+    setMessage("");
+    setLoading(true);
+
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          messages: updatedMessages,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "No se pudo obtener una respuesta.");
+      }
+
+      setMessages((current) => [
+        ...current,
+        {
+          role: "assistant",
+          content: data.reply,
+        },
+      ]);
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Ocurrió un error inesperado.";
+
+      setMessages((current) => [
+        ...current,
+        {
+          role: "assistant",
+          content: `Error: ${errorMessage}`,
+        },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <main
+      style={{
+        minHeight: "100vh",
+        background: "#111111",
+        color: "#ffffff",
+        padding: "24px",
+        fontFamily: "Arial, sans-serif",
+      }}
+    >
+      <div
+        style={{
+          width: "100%",
+          maxWidth: "700px",
+          margin: "0 auto",
+        }}
+      >
+        <header
+          style={{
+            marginBottom: "24px",
+            textAlign: "center",
+          }}
+        >
+          <h1
+            style={{
+              fontSize: "34px",
+              marginBottom: "8px",
+            }}
+          >
+            Mundo Sobre Ruedas
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+
+          <p
+            style={{
+              color: "#cccccc",
+              margin: 0,
+            }}
+          >
+            Prueba del asistente virtual
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+        </header>
+
+        <section
+          style={{
+            minHeight: "450px",
+            background: "#1b1b1b",
+            border: "1px solid #333333",
+            borderRadius: "16px",
+            padding: "20px",
+            marginBottom: "16px",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "14px",
+            }}
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            {messages.map((item, index) => (
+              <div
+                key={`${item.role}-${index}`}
+                style={{
+                  alignSelf:
+                    item.role === "user" ? "flex-end" : "flex-start",
+                  maxWidth: "85%",
+                  padding: "12px 14px",
+                  borderRadius: "14px",
+                  background:
+                    item.role === "user" ? "#ffffff" : "#2a2a2a",
+                  color:
+                    item.role === "user" ? "#111111" : "#ffffff",
+                  whiteSpace: "pre-wrap",
+                  lineHeight: 1.5,
+                }}
+              >
+                {item.content}
+              </div>
+            ))}
+
+            {loading && (
+              <div
+                style={{
+                  alignSelf: "flex-start",
+                  padding: "12px 14px",
+                  borderRadius: "14px",
+                  background: "#2a2a2a",
+                  color: "#cccccc",
+                }}
+              >
+                Pensando...
+              </div>
+            )}
+          </div>
+        </section>
+
+        <form
+          onSubmit={handleSubmit}
+          style={{
+            display: "flex",
+            gap: "10px",
+          }}
+        >
+          <input
+            type="text"
+            value={message}
+            onChange={(event) => setMessage(event.target.value)}
+            placeholder="Escribe tu respuesta..."
+            disabled={loading}
+            style={{
+              flex: 1,
+              padding: "14px",
+              borderRadius: "12px",
+              border: "1px solid #444444",
+              background: "#1b1b1b",
+              color: "#ffffff",
+              fontSize: "16px",
+              outline: "none",
+            }}
+          />
+
+          <button
+            type="submit"
+            disabled={loading || message.trim() === ""}
+            style={{
+              padding: "14px 22px",
+              borderRadius: "12px",
+              border: "none",
+              background: "#ffffff",
+              color: "#111111",
+              fontWeight: "bold",
+              cursor:
+                loading || message.trim() === ""
+                  ? "not-allowed"
+                  : "pointer",
+              opacity:
+                loading || message.trim() === "" ? 0.5 : 1,
+            }}
           >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+            Enviar
+          </button>
+        </form>
+      </div>
+    </main>
   );
 }
